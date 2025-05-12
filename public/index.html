@@ -238,6 +238,7 @@
         return;
       }
       const payload = { description: desc, due: due };
+      console.log("userId:", tg.initDataUnsafe?.user?.id);
       let response;
       if (editingTaskId) {
         payload.id = editingTaskId;
@@ -248,7 +249,12 @@
         editingTaskId = null;
       } else {
         // Добавляем userId для связи задачи с пользователем
-        payload.userId = tg.initDataUnsafe?.user?.id || null;
+        
+        if (!tg.initDataUnsafe?.user?.id) {
+          alert('Ошибка: не удалось получить userId из Telegram');
+          return;
+        }
+        payload.userId = tg.initDataUnsafe.user.id;
         response = await fetch(API_URL + '/api/tasks', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
