@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskGuru – Мои задачи</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Небольшие встроенные стили для визуального оформления -->
+  <style>
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(120deg, #e0f1ff, #f9f9ff); /* мягкий градиент фона */
+      color: #333;
+    }
+    .dark body {
+      background: linear-gradient(120deg, #1c1c1e, #2c2c2e);
+      color: #eee;
+    }
+    header {
+      padding: 16px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      position: relative;
+    }
+    header .profile-btn {
+      position: absolute; right: 16px; top: 16px;
+      background: none; border: none;
+    }
+    header .profile-btn img {
+      width: 32px; height: 32px; border-radius: 50%;
+    }
+    #task-list {
+      padding: 16px;
+    }
+    .task-card {
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(5px);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dark .task-card {
+      background: rgba(50,50,50,0.7);
+    }
+    .task-card .desc {
+      flex: 1; margin-left: 8px;
+    }
+    .task-card.completed .desc {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+    .task-card .status-btn {
+      width: 24px; height: 24px;
+      border: 2px solid #666; border-radius: 50%;
+      background: none;
+      cursor: pointer;
+    }
+    .task-card.completed .status-btn {
+      background: #4caf50; /* green completed */
+      border-color: #4caf50;
+      position: relative;
+    }
+    .task-card.completed .status-btn::after {
+      content: '✔'; 
+      color: #fff; font-size: 16px;
+      position: absolute; top: -2px; left: 4px;
+    }
+    .add-btn {
+      position: fixed;
+      right: 16px; bottom: 16px;
+      width: 56px; height: 56px;
+      border: none; border-radius: 50%;
+      background: #007aff; /* iOS blue */
+      color: #fff; font-size: 36px; line-height: 0;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    /* Стиль для модального окна добавления/редактирования задачи */
+    .modal-backdrop {
+      display: none;
+      position: fixed; top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.5);
+      align-items: center; justify-content: center;
+    }
+    .modal {
+      background: #fefefe; border-radius: 12px; padding: 16px;
+      width: 90%; max-width: 320px;
+    }
+    .modal h2 { margin-top: 0; }
+    .modal label { display: block; font-size: 0.9em; margin: 8px 0 4px; }
+    .modal input, .modal textarea, .modal select {
+      width: 100%; padding: 8px;
+      border: 1px solid #ccc; border-radius: 8px;
+      font: inherit;
+    }
+    .modal .actions {
+      text-align: right; margin-top: 12px;
+    }
+    .modal .actions button {
+      padding: 8px 12px; margin-left: 8px;
+      border: none; border-radius: 6px;
+      font: inherit; cursor: pointer;
+    }
+    .modal .actions .btn-cancel {
+      background: none; color: #007aff;
+    }
+    .modal .actions .btn-save {
+      background: #007aff; color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    Мои задачи
+    <button class="profile-btn" id="profileBtn">
+      <img src="" alt="Profile" id="profilePic"/>
+    </button>
+  </header>
+  <main id="task-list"><!-- Список задач будет вставлен сюда --></main>
+  <!-- Кнопка добавить задачу -->
+  <button class="add-btn" id="addBtn">+</button>
+
+  <!-- Модальное окно добавления/редактирования задачи -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2 id="modalTitle">Новая задача</h2>
+      <label for="taskDesc">Описание</label>
+      <textarea id="taskDesc" rows="3" placeholder="Описание задачи..."></textarea>
+      <label for="taskDue">Дедлайн</label>
+      <input type="date" id="taskDue" />
+      <!-- Можно добавить выпадающий список категории, приоритет и т.д. -->
+      <div class="actions">
+        <button type="button" class="btn-cancel" id="cancelBtn">Отмена</button>
+        <button type="button" class="btn-save" id="saveBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Основной скрипт приложения -->
+  <script>
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram.WebApp;
+    if (tg) {
+      // Установка цвета темы
+      document.body.classList.toggle('dark', tg.colorScheme === 'dark');
+      // Получение и установка фото профиля, если доступно
+      const user = tg.initDataUnsafe?.user;
+      if (user && user.photo_url) {
+        document.getElementById('profilePic').src = user.photo_url;
+      } else {
+        document.getElementById('profilePic').src = 'https://telegram.org/img/default_avatar.png';
+      }
+      // Опционально: Можно отобразить имя пользователя где-нибудь
+      // tg.MainButton.text = `Привет, ${user.first_name}!`;
+    }
+
+    // Базовый URL API (для простоты, тот же хост)
+    const API_URL = '';
+    // Массив задач в памяти клиента
+    let tasks = [];
+
+    // Функция рендеринга списка задач
+    function renderTasks() {
+      const listEl = document.getElementById('task-list');
+      listEl.innerHTML = ''; // очистить
+      if (tasks.length === 0) {
+        listEl.innerHTML = '<p style="text-align:center; color:#666;">Задач нет</p>';
+        return;
+      }
+      tasks.forEach(task => {
+        const item = document.createElement('div');
+        item.className = 'task-card' + (task.status === 'Done' ? ' completed' : '');
+        // Кнопка статуса
+        const statusBtn = document.createElement('button');
+        statusBtn.className = 'status-btn';
+        statusBtn.addEventListener('click', () => toggleTaskStatus(task.id));
+        item.appendChild(statusBtn);
+        // Описание
+        const desc = document.createElement('div');
+        desc.className = 'desc';
+        desc.textContent = task.description;
+        item.appendChild(desc);
+        // Дата дедлайна если есть
+        if (task.due) {
+          const dueSpan = document.createElement('span');
+          dueSpan.style.fontSize = '0.8em';
+          dueSpan.style.marginRight = '8px';
+          dueSpan.textContent = formatDate(task.due);
+          item.appendChild(dueSpan);
+        }
+        listEl.appendChild(item);
+      });
+    }
+
+    // Форматирование даты (YYYY-MM-DD -> DD.MM.YYYY)
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-'); // простой разбор
+      if (parts.length !== 3) return dateStr;
+      return parts[2] + '.' + parts[1] + '.' + parts[0];
+    }
+
+    // Открытие/закрытие модального окна
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const taskDescInput = document.getElementById('taskDesc');
+    const taskDueInput = document.getElementById('taskDue');
+    let editingTaskId = null;
+    function openModal(editTask = null) {
+      if (editTask) {
+        document.getElementById('modalTitle').textContent = 'Редактировать задачу';
+        taskDescInput.value = editTask.description;
+        taskDueInput.value = editTask.due || '';
+        editingTaskId = editTask.id;
+      } else {
+        document.getElementById('modalTitle').textContent = 'Новая задача';
+        taskDescInput.value = '';
+        taskDueInput.value = '';
+        editingTaskId = null;
+      }
+      modalBackdrop.style.display = 'flex';
+    }
+    function closeModal() {
+      modalBackdrop.style.display = 'none';
+    }
+
+    // Добавление новой задачи (или сохранение редактированной)
+    async function saveTask() {
+      const desc = taskDescInput.value.trim();
+      const due = taskDueInput.value;
+      if (!desc) {
+        alert('Описание задачи не должно быть пустым.');
+        return;
+      }
+      const payload = { description: desc, due: due };
+      let response;
+      if (editingTaskId) {
+        payload.id = editingTaskId;
+        response = await fetch(API_URL + '/api/tasks/update', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        editingTaskId = null;
+      } else {
+        // Добавляем userId для связи задачи с пользователем
+        payload.userId = tg.initDataUnsafe?.user?.id || null;
+        response = await fetch(API_URL + '/api/tasks', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+      if (response.ok) {
+        const data = await response.json();
+        if (data) {
+          await loadTasks(); // перезагрузить список задач
+        }
+      } else {
+        console.error('Ошибка сохранения задачи', response.status);
+      }
+      closeModal();
+    }
+
+    // Переключение статуса задачи (выполнена/не выполнена)
+    async function toggleTaskStatus(taskId) {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const newStatus = task.status === 'Done' ? 'Pending' : 'Done';
+      const resp = await fetch(API_URL + '/api/tasks/complete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId, status: newStatus })
+      });
+      if (resp.ok) {
+        task.status = newStatus;
+        renderTasks();
+      } else {
+        console.error('Не удалось обновить статус задачи');
+      }
+    }
+
+    // Загрузка задач с сервера
+    async function loadTasks() {
+      const userId = tg.initDataUnsafe?.user?.id;
+      if (!userId) {
+        console.warn('User ID not found, cannot load tasks');
+        return;
+      }
+      const resp = await fetch(API_URL + '/api/tasks?userId=' + userId);
+      if (resp.ok) {
+        const data = await resp.json();
+        tasks = data.tasks || [];
+        renderTasks();
+      } else {
+        console.error('Ошибка загрузки задач');
+      }
+    }
+
+    // Обработчики UI
+    document.getElementById('addBtn').addEventListener('click', () => openModal());
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('saveBtn').addEventListener('click', saveTask);
+    // Профиль - можно открыть профиль/статистику по нажатию (реализуется отдельно)
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      alert('Открыть профиль пользователя (в разработке)');
+      // Здесь можно реализовать переход на экран профиля
+    });
+
+    // При загрузке сразу получить список задач
+    loadTasks();
+  </script>
+</body>
+</html>
