@@ -31,15 +31,18 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // 📅 Чтение задач из Google Sheets
 app.get('/api/tasks', async (req, res) => {
+  const currentUserId = req.query.userId;
   try {
     const result = await sheets.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEET_ID,
       range: 'Tasks!A2:E',
     });
     const rows = result.data.values || [];
-    const tasks = rows.map(([id, userId, description, due, status]) => ({
-      id, userId, description, due, status
-    }));
+    const tasks = rows
+      .filter(row => row[1] === currentUserId) // row[1] = userId
+      .map(([id, userId, description, due, status]) => ({
+        id, userId, description, due, status
+      }));
     res.json(tasks);
   } catch (err) {
     console.error('Ошибка загрузки задач:', err.message);
