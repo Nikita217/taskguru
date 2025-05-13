@@ -1,0 +1,157 @@
+
+:root {
+  --primary: #0d6efd;
+  --bg: #f8f9fa;
+  --text: #212529;
+  --card-bg: #ffffff;
+  --radius: 12px;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  padding: 10px 20px;
+  background: #e9f0ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.tab {
+  background: #dee6f5;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+main {
+  padding: 10px 20px;
+}
+
+.task-card {
+  display: flex;
+  align-items: flex-start;
+  background: var(--card-bg);
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  gap: 10px;
+}
+
+.task-card input[type="checkbox"] {
+  transform: scale(1.2);
+  margin-top: 5px;
+}
+
+.task-card .desc {
+  flex: 1;
+  cursor: pointer;
+}
+
+button.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-size: 24px;
+  padding: 10px 18px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+.profile-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+#user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: var(--radius);
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal h2 {
+  margin-top: 0;
+}
+
+.modal textarea,
+.modal input[type="date"],
+.modal input[type="time"] {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.step-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+button {
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button:not(.fab) {
+  background: #e3eafc;
+}
+
+button.primary {
+  background: var(--primary);
+  color: white;
+}
+
+.hidden {
+  display: none;
+}
