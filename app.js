@@ -279,8 +279,6 @@ app.get('/api/motivation', async (req, res) => {
 // Запуск сервера
 const PORT = process.env.PORT || 3000;
 
-const PORT = process.env.PORT || 10000;
-
 const app = express();
 
 app.get('/', (req, res) => res.send('TaskGuru работает'));
