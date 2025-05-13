@@ -23,14 +23,23 @@ async function checkAndSendReminders() {
 
       const taskTime = new Date(due);
       if (taskTime > now && taskTime <= soon) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        const body = {
+          chat_id: userId,
+          text: `🔔 Через 15 минут задача: "${description}"`
+        };
+        const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: userId,
-            text: `🔔 Через 15 минут задача: "${description}"`,
-          })
+          body: JSON.stringify(body)
         });
+        const result = await response.json();
+        
+        if (!result.ok) {
+          console.error('🚫 Ошибка от Telegram:', result);
+        } else {
+          console.log('✅ Уведомление отправлено:', result);
+        }
       }
     }
   } catch (err) {
