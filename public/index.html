@@ -115,6 +115,13 @@
     .modal .actions .btn-save {
       background: #007aff; color: #fff;
     }
+    .modal input[type="time"],
+    .modal input[type="date"],
+    .modal textarea {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -241,7 +248,8 @@
         alert('Описание задачи не должно быть пустым.');
         return;
       }
-      const time = document.getElementById('taskTime').value;
+      const timeInput = document.getElementById('taskTime');
+      const time = timeInput ? timeInput.value : '';
       const dueDateTime = due && time ? `${due}T${time}` : due;
       
       const payload = {
