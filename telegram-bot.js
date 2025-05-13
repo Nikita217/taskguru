@@ -8,7 +8,7 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
-const openai = new OpenAIApi(new Configuration({ apiKey: OPENAI_API_KEY }));
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // Контекст общения для каждого пользователя
 const userContexts = {};
