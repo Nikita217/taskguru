@@ -1,137 +1,179 @@
 
-// 📦 Единый сервер: TaskGuru backend + Telegram бот + AI обработка
-
 const express = require('express');
+const bodyParser = require('body-parser');
+const { google } = require('googleapis');
 const cron = require('node-cron');
 const fetch = require('node-fetch');
-const TelegramBot = require('node-telegram-bot-api');
-const OpenAI = require('openai');
-const { google } = require('googleapis');
+const path = require('path');
+const { OpenAI } = require('openai');
+
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
+app.use(bodyParser.json());
+app.use(express.static('public'));
 
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+const PORT = process.env.PORT || 10000;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 const auth = new google.auth.GoogleAuth({
   credentials: {
     client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    private_key: (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\n/g, '\n')
+    private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\n/g, '
+'),
   },
-  scopes: ['https://www.googleapis.com/auth/spreadsheets']
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
-app.use(express.json());
-app.use(express.static('public'));
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-const userContexts = {};
-
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
-bot.on('message', async (msg) => {
-  const chatId = msg.chat.id;
-  const userInput = msg.text;
-
-  if (!userContexts[chatId]) {
-    userContexts[chatId] = [
-      { role: 'system', content: 'Ты — коуч, мотивируешь и подсказываешь пользователю как выполнить задачу.' }
-    ];
-  }
-
-  userContexts[chatId].push({ role: 'user', content: userInput });
-
+// 📅 Чтение задач из Google Sheets
+app.get('/api/tasks', async (req, res) => {
   try {
-    const chatResponse = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: userContexts[chatId]
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'Tasks!A2:E',
     });
-
-    const reply = chatResponse.choices[0].message.content;
-    userContexts[chatId].push({ role: 'assistant', content: reply });
-    bot.sendMessage(chatId, reply);
+    const rows = result.data.values || [];
+    const tasks = rows.map(([id, userId, description, due, status]) => ({
+      id, userId, description, due, status
+    }));
+    res.json(tasks);
   } catch (err) {
-    console.error('❌ GPT ошибка:', err.message);
-    bot.sendMessage(chatId, '⚠️ Ошибка при ответе GPT. Попробуй ещё раз позже.');
+    console.error('Ошибка загрузки задач:', err.message);
+    res.status(500).send('Ошибка сервера');
   }
 });
 
-async function checkAndSendReminders() {
+// ➕ Добавление задачи
+app.post('/api/add-task', async (req, res) => {
+  const { id, userId, description, due } = req.body;
   try {
-    console.log('🛎 Запуск напоминаний...');
-    const res = await sheets.spreadsheets.values.get({
+    await sheets.spreadsheets.values.append({
       spreadsheetId: GOOGLE_SHEET_ID,
-      range: 'Tasks!A2:F'
+      range: 'Tasks!A2:F',
+      valueInputOption: 'RAW',
+      resource: {
+        values: [[id, userId, description, due, 'Pending', '']]
+      }
     });
-    const rows = res.data.values || [];
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Ошибка при добавлении задачи:', err.message);
+    res.status(500).send('Ошибка добавления');
+  }
+});
+
+// ☑️ Завершение задачи
+app.post('/api/complete-task', async (req, res) => {
+  const { id } = req.body;
+  try {
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'Tasks!A2:E',
+    });
+    const rows = result.data.values || [];
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    if (rowIndex === -1) return res.status(404).send('Задача не найдена');
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: `Tasks!E${rowIndex + 2}`,
+      valueInputOption: 'RAW',
+      resource: { values: [['Done']] },
+    });
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Ошибка при завершении задачи:', err.message);
+    res.status(500).send('Ошибка');
+  }
+});
+
+// ✏️ Обновление задачи
+app.post('/api/update-task', async (req, res) => {
+  const { id, description, due } = req.body;
+  try {
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'Tasks!A2:E',
+    });
+    const rows = result.data.values || [];
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    if (rowIndex === -1) return res.status(404).send('Задача не найдена');
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: `Tasks!C${rowIndex + 2}:D${rowIndex + 2}`,
+      valueInputOption: 'RAW',
+      resource: { values: [[description, due]] },
+    });
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Ошибка при обновлении задачи:', err.message);
+    res.status(500).send('Ошибка');
+  }
+});
+
+// 🔔 Проверка задач с уведомлением
+app.get('/api/check-reminders', async (req, res) => {
+  try {
+    console.log('🛎 Проверка напоминаний...');
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'Tasks!A2:F',
+    });
+    const rows = result.data.values || [];
     const now = new Date();
-    const soon = new Date(now.getTime() + 15 * 60 * 1000);
+    const soon = new Date(now.getTime() + 15 * 60000);
 
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const [id, userId, description, due, status, notified] = row;
-      if (!due || status === 'Done' || notified === 'Yes') continue;
-
-      const taskTime = new Date(due);
-      if (taskTime > now && taskTime <= soon) {
-        let motivation = `🔔 Через 15 минут задача: "${description}"`;
+      const [id, userId, description, due, status, notified] = rows[i];
+      if (!due || status === 'Done' || notified === 'yes') continue;
+      const dueTime = new Date(due);
+      if (dueTime > now && dueTime <= soon) {
+        console.log(`📡 Готовим мотивацию для задачи: "${description}"`);
+        let message = '';
         try {
-          const prompt = `Напомни о задаче: "${description}". Поддержи морально и предложи советы или лайфхаки по выполнению. До 250 символов.`;
-          const chatResponse = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
+          const gpt = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
             messages: [
-              { role: 'system', content: 'Ты — позитивный коуч и помощник. Дай мотивацию и советы по выполнению задачи.' },
-              { role: 'user', content: prompt }
-            ]
+              { role: "system", content: "Ты — позитивный и дружелюбный коуч, который помогает людям не откладывать дела и поддерживает их." },
+              { role: "user", content: `Напомни о задаче: "${description}". Подскажи, с чего начать, как её лучше выполнить, дай короткую мотивацию и пару лайфхаков.` }
+            ],
+            max_tokens: 200,
           });
-          motivation = chatResponse.choices[0].message.content.trim();
+          message = gpt.choices[0]?.message?.content || '';
         } catch (err) {
-          console.error('⚠️ Ошибка при генерации мотивации:', err.message);
+          console.error("❌ GPT ошибка:", err.message);
+          message = `🔔 Через 15 минут задача: "${description}"`;
         }
 
-        try {
-          const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-          const body = { chat_id: userId, text: motivation };
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: userId, text: message })
+        });
 
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
-
-          const result = await response.text();
-          console.log('📬 Ответ Telegram:', result);
-
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: GOOGLE_SHEET_ID,
-            range: `Tasks!F${i + 2}`,
-            valueInputOption: 'RAW',
-            resource: { values: [['Yes']] }
-          });
-        } catch (err) {
-          console.error('❌ Ошибка отправки уведомления:', err.message);
-        }
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: GOOGLE_SHEET_ID,
+          range: `Tasks!F${i + 2}`,
+          valueInputOption: 'RAW',
+          resource: { values: [['yes']] }
+        });
       }
     }
+
+    res.send('✅ Reminders checked');
   } catch (err) {
-    console.error('❌ Ошибка в checkAndSendReminders:', err.message);
+    console.error('Ошибка в check-reminders:', err.message);
+    res.status(500).send('Ошибка напоминаний');
   }
-}
-
-app.get('/api/check-reminders', async (req, res) => {
-  await checkAndSendReminders();
-  res.send('✅ Напоминания проверены');
 });
 
-cron.schedule('*/5 * * * *', async () => {
-  console.log('⏰ Cron: запуск напоминаний...');
-  await checkAndSendReminders();
-});
-
-app.get('/', (req, res) => res.send('TaskGuru работает'));
-
+// 🎯 Запуск
 app.listen(PORT, () => {
   console.log(`✅ Сервер запущен на порту ${PORT}`);
 });
