@@ -193,19 +193,11 @@
           const dueSpan = document.createElement('span');
           dueSpan.style.fontSize = '0.8em';
           dueSpan.style.marginRight = '8px';
-          dueSpan.textContent = formatDate(task.due);
+          dueSpan.textContent = formatDateTime(task.due);;
           item.appendChild(dueSpan);
         }
         listEl.appendChild(item);
       });
-    }
-
-    // Форматирование даты (YYYY-MM-DD -> DD.MM.YYYY)
-    function formatDate(dateStr) {
-      if (!dateStr) return '';
-      const parts = dateStr.split('-'); // простой разбор
-      if (parts.length !== 3) return dateStr;
-      return parts[2] + '.' + parts[1] + '.' + parts[0];
     }
 
     // Открытие/закрытие модального окна
