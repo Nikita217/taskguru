@@ -8,6 +8,7 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 async function checkAndSendReminders() {
   try {
+    console.log('🛎 Запуск напоминаний...');
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEET_ID,
       range: 'Tasks!A2:E'
@@ -22,34 +23,35 @@ async function checkAndSendReminders() {
       if (!due || status === 'Done') continue;
 
       const taskTime = new Date(due);
+      console.log(`📅 Проверка задачи "${description}" на ${taskTime.toISOString()}`);
+
       if (taskTime > now && taskTime <= soon) {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        const body = {
+          chat_id: userId,
+          text: `🔔 Через 15 минут задача: "${description}"`
+        };
+
+        console.log('📡 Пытаюсь отправить в Telegram:', body);
+
         try {
-          const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-          const body = {
-            chat_id: userId,
-            text: `Через 15 минут задача: "${description}"`
-          };
-        
-          console.log('📡 Отправляю fetch в Telegram API:', url, 'Body:', body);
-        
           const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
           });
-        
-          const resultText = await response.text(); // не .json() — покажем даже если невалидно
-        
-          console.log('Ответ Telegram (raw):', resultText);
+          const resultText = await response.text();
+          console.log('📬 Ответ Telegram:', resultText);
         } catch (fetchErr) {
-          console.error('Ошибка при fetch в Telegram:', fetchErr);
+          console.error('❌ Ошибка при запросе в Telegram API:', fetchErr);
         }
       }
     }
   } catch (err) {
-    console.error('Ошибка при проверке напоминаний:', err);
+    console.error('❌ Ошибка внутри checkAndSendReminders():', err);
   }
 }
+
 
 // Проверять каждые 5 минут
 setInterval(checkAndSendReminders, 5 * 60 * 1000);
