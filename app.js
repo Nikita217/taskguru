@@ -5,53 +5,80 @@ const { Configuration, OpenAIApi } = require('openai');
 // Google Sheets API
 const { google } = require('googleapis');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
 async function checkAndSendReminders() {
   try {
     console.log('🛎 Запуск напоминаний...');
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEET_ID,
-      range: 'Tasks!A2:E'
+      range: 'Tasks!A2:F'
     });
     const rows = res.data.values || [];
 
     const now = new Date();
     const soon = new Date(now.getTime() + 15 * 60 * 1000);
 
-    for (const row of rows) {
-      const [id, userId, description, due, status] = row;
-      if (!due || status === 'Done') continue;
-    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const [id, userId, description, due, status, notified] = row;
+
+      if (!due || status === 'Done' || notified === 'Yes') continue;
+
       const taskTime = new Date(due);
-      const now = new Date();
-      const soon = new Date(now.getTime() + 15 * 60 * 1000);
-    
       console.log(`🧪 now: ${now.toISOString()}, soon: ${soon.toISOString()}, taskTime: ${taskTime.toISOString()}`);
-    
+
       if (taskTime > now && taskTime <= soon) {
-        console.log(`📡 Отправляю уведомление "${description}" на ${taskTime.toISOString()}`);
-    
-        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-        const body = {
-          chat_id: userId,
-          text: `🔔 Через 15 минут задача: "${description}"`
-        };
-    
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-    
-        const result = await response.text();
-        console.log('📬 Ответ Telegram:', result);
+        console.log(`📡 Готовим мотивацию для задачи: "${description}"`);
+
+        let motivation = `🔔 Через 15 минут задача: "${description}"`;
+
+        try {
+          const prompt = `Придумай короткое, дружелюбное и мотивирующее сообщение, чтобы помочь человеку выполнить задачу: "${description}". Сделай сообщение не длиннее 200 символов.`;
+          const chatResponse = await openai.createChatCompletion({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'Ты — позитивный и дружелюбный коуч, который помогает людям не откладывать дела и поддерживает их.' },
+              { role: 'user', content: prompt }
+            ]
+          });
+          motivation = chatResponse.data.choices[0].message.content.trim();
+        } catch (err) {
+          console.error('⚠️ Ошибка при генерации мотивации:', err);
+        }
+
+        try {
+          const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+          const body = {
+            chat_id: userId,
+            text: motivation
+          };
+
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+
+          const result = await response.text();
+          console.log('📬 Ответ Telegram:', result);
+
+          // Отметить задачу как "уведомлено"
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: GOOGLE_SHEET_ID,
+            range: `Tasks!F${i + 2}`, // строка (начиная с 2) и колонка F
+            valueInputOption: 'RAW',
+            resource: {
+              values: [['Yes']]
+            }
+          });
+        } catch (err) {
+          console.error('❌ Ошибка при отправке уведомления:', err);
+        }
       }
     }
   } catch (err) {
-    console.error('❌ Ошибка внутри checkAndSendReminders():', err);
+    console.error('❌ Ошибка в checkAndSendReminders():', err);
   }
 }
-
 
 // Проверять каждые 5 минут
 setInterval(checkAndSendReminders, 5 * 60 * 1000);
