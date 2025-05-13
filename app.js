@@ -26,7 +26,7 @@ async function checkAndSendReminders() {
         const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
         const body = {
           chat_id: userId,
-          text: `🔔 Через 15 минут задача: "${description}"`
+          text: `Через 15 минут задача: "${description}"`
         };
         const response = await fetch(url, {
           method: 'POST',
@@ -36,9 +36,9 @@ async function checkAndSendReminders() {
         const result = await response.json();
         
         if (!result.ok) {
-          console.error('🚫 Ошибка от Telegram:', result);
+          console.error('Ошибка от Telegram:', result);
         } else {
-          console.log('✅ Уведомление отправлено:', result);
+          console.log('Уведомление отправлено:', result);
         }
       }
     }
@@ -54,7 +54,7 @@ app.use(express.json());  // встроенный body-parser для JSON
 
 app.get('/api/check-reminders', async (req, res) => {
   await checkAndSendReminders();
-  res.send('✅ Reminders checked');
+  res.send('Reminders checked');
 });
 // Конфигурация OpenAI API (ChatGPT)
 const openaiConfig = new Configuration({
