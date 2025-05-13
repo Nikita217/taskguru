@@ -37,7 +37,12 @@ async function checkAndSendReminders() {
           const chatResponse = await openai.createChatCompletion({
             model: 'gpt-3.5-turbo',
             messages: [
-              { role: 'system', content: 'Ты — позитивный и дружелюбный коуч, который помогает людям не откладывать дела и поддерживает их.' },
+              { role: 'system', content: `
+Ты — умный, дружелюбный помощник. 
+1. Напомни, что задача скоро начнётся: "${description}".
+2. Поддержи морально.
+3. Дай советы и пару шагов или лайфхаков по выполнению.
+Не более 250 символов.` },
               { role: 'user', content: prompt }
             ]
           });
