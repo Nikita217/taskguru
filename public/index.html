@@ -338,5 +338,118 @@
     // При загрузке сразу получить список задач
     loadTasks();
   </script>
+
+<!-- Вкладки -->
+<div style="display: flex; justify-content: center; gap: 10px; margin: 16px;">
+  <button onclick="setTab('all')" class="tab-btn" id="tab-all">Все</button>
+  <button onclick="setTab('today')" class="tab-btn" id="tab-today">Сегодня</button>
+  <button onclick="setTab('done')" class="tab-btn" id="tab-done">Выполненные</button>
+</div>
+
+<!-- Модальное окно создания и редактирования задачи -->
+<div id="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#00000088; align-items:center; justify-content:center; z-index:1000;">
+  <div style="background:#fff; padding:20px; border-radius:12px; max-width:90%; width:300px;">
+    <div id="stepContent"></div>
+  </div>
+</div>
+
+<style>
+  .tab-btn { padding: 8px 14px; border-radius: 12px; border: none; background: #ddd; }
+  .tab-btn.active { background: #007bff; color: white; }
+  .fade-out { opacity: 0; transform: translateX(20px); transition: 0.4s; }
+</style>
+
+<script>
+  let currentTab = 'all';
+  let step = 1;
+  let currentInput = {};
+  let editIndex = null;
+
+  function setTab(tab) {
+    currentTab = tab;
+    ['all','today','done'].forEach(t => document.getElementById('tab-' + t).classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    renderTasks();
+  }
+
+  function openModal(create = true, index = null) {
+    step = 1;
+    currentInput = {};
+    editIndex = index;
+    modal.style.display = 'flex';
+    if (!create && index !== null) {
+      currentInput = { ...tasks[index] };
+      step = 4;
+    }
+    showStep();
+  }
+
+  function showStep() {
+    const el = document.getElementById('stepContent');
+    if (step === 1) {
+      el.innerHTML = '<input placeholder="Задача" value="'+(currentInput.text||'')+'" onchange="currentInput.text=this.value" /><br><button onclick="step=2;showStep()">Далее</button>';
+    } else if (step === 2) {
+      el.innerHTML = '<input type="date" onchange="currentInput.date=this.value" /><br><button onclick="step=3;showStep()">Далее</button>';
+    } else if (step === 3) {
+      el.innerHTML = '<input type="time" onchange="currentInput.time=this.value" /><br><button onclick="saveTask()">Сохранить</button>';
+    } else if (step === 4) {
+      el.innerHTML = \`
+        <input value="\${currentInput.text}" onchange="currentInput.text=this.value" /><br>
+        <input type="datetime-local" value="\${currentInput.due}" onchange="currentInput.due=this.value" /><br>
+        <button onclick="updateTask()">Сохранить</button>\`;
+    }
+  }
+
+  function saveTask() {
+    const due = currentInput.date + 'T' + currentInput.time;
+    tasks.push({ text: currentInput.text, due, done: false });
+    modal.style.display = 'none';
+    renderTasks();
+  }
+
+  function updateTask() {
+    if (editIndex !== null) {
+      tasks[editIndex] = currentInput;
+      modal.style.display = 'none';
+      renderTasks();
+    }
+  }
+
+  function toggleDone(i, el) {
+    tasks[i].done = true;
+    el.classList.add('fade-out');
+    setTimeout(renderTasks, 400);
+  }
+
+  function renderTasks() {
+    const now = new Date().toISOString().split('T')[0];
+    const list = document.getElementById('task-list');
+    list.innerHTML = '';
+    tasks.filter((t, i) => {
+      if (currentTab === 'today') return t.due.startsWith(now) && !t.done;
+      if (currentTab === 'done') return t.done;
+      return !t.done;
+    }).sort((a,b)=>new Date(a.due)-new Date(b.due)).forEach((task, i) => {
+      const div = document.createElement('div');
+      div.className = 'task-card' + (task.done ? ' done' : '');
+      div.innerHTML = \`
+        <span class="desc">\${task.text}</span>
+        <span style="font-size:0.8em">\${task.due.replace('T',' ').slice(0,16)}</span>
+      \`;
+      div.onclick = () => openModal(false, i);
+      if (!task.done) div.ondblclick = () => toggleDone(i, div);
+      list.appendChild(div);
+    });
+  }
+
+  // Пример задач
+  const tasks = [
+    { text: 'Уведомление 1', due: '2025-05-14T16:00', done: false },
+    { text: 'Уведомление 2', due: '2025-05-14T17:00', done: true }
+  ];
+  setTab('all');
+</script>
+
 </body>
+
 </html>
