@@ -123,6 +123,40 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
+window.onload = () => {
+  window.tg = Telegram.WebApp;
+  tg.ready();
+
+  const tgUser = tg.initDataUnsafe?.user;
+  if (tgUser?.photo_url) {
+    document.getElementById('user-avatar').src = tgUser.photo_url;
+  }
+  if (tgUser?.first_name) {
+    document.getElementById('username').textContent = tgUser.first_name;
+  }
+
+  loadTasks(); // ← вот это загружает задачи
+};
+
+async function loadTasks() {
+  const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
+  if (!userId) {
+    console.warn('User ID not found');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/tasks?userId=${userId}`);
+    if (!res.ok) throw new Error('Ошибка при загрузке');
+    const data = await res.json();
+    tasks = data;
+    renderTasks();
+  } catch (err) {
+    console.error("Ошибка загрузки задач:", err);
+    Telegram.WebApp.showAlert("Не удалось загрузить задачи");
+  }
+}
+
   const tgUser = Telegram.WebApp.initDataUnsafe.user;
   if (tgUser?.photo_url) {
     document.getElementById('user-avatar').src = tgUser.photo_url;
