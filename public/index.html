@@ -3,7 +3,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>TaskGuru – Мои задачи</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -11,23 +11,23 @@
 <body>
   <header>
     <h1>Мои задачи</h1>
-    <div class="tabs">
-      <button class="tab" data-tab="all">Все</button>
-      <button class="tab" data-tab="today">Сегодня</button>
-      <button class="tab" data-tab="done">Выполненные</button>
-    </div>
     <button class="profile-btn" onclick="openProfile()">
       <img src="" id="user-avatar" />
     </button>
   </header>
 
   <main>
+    <div class="tabs">
+      <button class="tab" data-tab="all">Все</button>
+      <button class="tab" data-tab="today">Сегодня</button>
+      <button class="tab" data-tab="done">Выполненные</button>
+    </div>
     <div id="task-list"></div>
   </main>
 
   <button class="fab" onclick="openStepModal()">+</button>
 
-  <!-- Модальное окно пошагового добавления задачи -->
+  <!-- Шаговое добавление -->
   <div class="modal hidden" id="step-modal">
     <div class="modal-content">
       <h2>Новая задача</h2>
@@ -52,10 +52,10 @@
     </div>
   </div>
 
-  <!-- Модальное окно редактирования -->
+  <!-- Редактирование -->
   <div class="modal hidden" id="edit-modal">
     <div class="modal-content">
-      <h2>Редактировать задачу</h2>
+      <h2>Редактировать</h2>
       <input type="hidden" id="edit-id" />
       <label>Описание</label>
       <textarea id="edit-desc"></textarea>

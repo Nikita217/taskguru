@@ -3,7 +3,7 @@ let currentTab = 'all';
 let tasks = [];
 
 function openProfile() {
-  Telegram.WebApp.showAlert("Профиль в разработке!");
+  Telegram.WebApp.showAlert("Профиль в разработке");
 }
 
 function openStepModal() {
@@ -28,9 +28,10 @@ function nextStep() {
 }
 
 function submitTask() {
-  const desc = document.getElementById('new-desc').value;
+  const desc = document.getElementById('new-desc').value.trim();
   const date = document.getElementById('new-date').value;
   const time = document.getElementById('new-time').value;
+  if (!desc || !date || !time) return Telegram.WebApp.showAlert("Заполни все поля");
   const due = `${date}T${time}`;
   const id = Date.now().toString();
   const userId = Telegram.WebApp.initDataUnsafe.user?.id || "demo";
@@ -39,7 +40,13 @@ function submitTask() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, userId, description: desc, due })
-  }).then(() => location.reload());
+  }).then(res => {
+    if (!res.ok) throw new Error('Ошибка при сохранении');
+    location.reload();
+  }).catch(err => {
+    console.error("Ошибка при добавлении:", err);
+    Telegram.WebApp.showAlert("Не удалось сохранить задачу");
+  });
 }
 
 function renderTasks() {
@@ -88,6 +95,7 @@ function completeTask(id) {
 
 function editTask(id) {
   const task = tasks.find(t => t.id === id);
+  if (!task) return;
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-desc').value = task.description;
   document.getElementById('edit-date').value = task.due.split('T')[0];
@@ -120,7 +128,12 @@ window.onload = () => {
     .then(res => res.json())
     .then(data => {
       tasks = data;
+      console.log("Задачи загружены:", tasks);
       renderTasks();
+    })
+    .catch(err => {
+      console.error("Ошибка загрузки задач:", err);
+      Telegram.WebApp.showAlert("Не удалось загрузить задачи");
     });
 
   const tgUser = Telegram.WebApp.initDataUnsafe.user;
