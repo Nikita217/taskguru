@@ -2,7 +2,7 @@
 const express = require('express');
 const cron = require('node-cron');
 const fetch = require('node-fetch');  // для вызова внешних API (если нужен)
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require("openai");
 // Google Sheets API
 const { google } = require('googleapis');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -96,10 +96,8 @@ app.get('/api/check-reminders', async (req, res) => {
   res.send('Reminders checked');
 });
 // Конфигурация OpenAI API (ChatGPT)
-const openaiConfig = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY  // ключ OpenAI из переменных окружения
-});
-const openai = new OpenAIApi(openaiConfig);
+const OpenAI = require("openai");
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Конфигурация Google Sheets API
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '<<< Вставьте ID вашей Google таблицы >>>';
