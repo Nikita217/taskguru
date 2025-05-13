@@ -47,8 +47,6 @@ async function checkAndSendReminders() {
         console.log('📬 Ответ Telegram:', result);
       }
     }
-      }
-    }
   } catch (err) {
     console.error('❌ Ошибка внутри checkAndSendReminders():', err);
   }
