@@ -4,7 +4,42 @@ const fetch = require('node-fetch');  // для вызова внешних API 
 const { Configuration, OpenAIApi } = require('openai');
 // Google Sheets API
 const { google } = require('googleapis');
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+async function checkAndSendReminders() {
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'Tasks!A2:E'
+    });
+    const rows = res.data.values || [];
+
+    const now = new Date();
+    const soon = new Date(now.getTime() + 15 * 60 * 1000);
+
+    for (const row of rows) {
+      const [id, userId, description, due, status] = row;
+      if (!due || status === 'Done') continue;
+
+      const taskTime = new Date(due);
+      if (taskTime > now && taskTime <= soon) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: userId,
+            text: `🔔 Через 15 минут задача: "${description}"`,
+          })
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Ошибка при проверке напоминаний:', err);
+  }
+}
+
+// Проверять каждые 5 минут
+setInterval(checkAndSendReminders, 5 * 60 * 1000);
 const app = express();
 app.use(express.json());  // встроенный body-parser для JSON
 
