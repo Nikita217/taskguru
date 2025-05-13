@@ -6,6 +6,11 @@ const { Configuration, OpenAIApi } = require('openai');
 const { google } = require('googleapis');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+app.get('/api/check-reminders', async (req, res) => {
+  await checkAndSendReminders();
+  res.send('Reminders checked');
+});
+
 async function checkAndSendReminders() {
   try {
     const res = await sheets.spreadsheets.values.get({
