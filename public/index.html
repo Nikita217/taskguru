@@ -250,7 +250,8 @@
       }
       const timeInput = document.getElementById('taskTime');
       const time = timeInput ? timeInput.value : '';
-      const dueDateTime = due && time ? `${due}T${time}` : due;
+      const localDateTimeStr = due && time ? `${due}T${time}` : due;
+      const dueDateTime = new Date(localDateTimeStr).toISOString();
       
       const payload = {
         description: desc,
