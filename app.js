@@ -6,11 +6,6 @@ const { Configuration, OpenAIApi } = require('openai');
 const { google } = require('googleapis');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-app.get('/api/check-reminders', async (req, res) => {
-  await checkAndSendReminders();
-  res.send('Reminders checked');
-});
-
 async function checkAndSendReminders() {
   try {
     const res = await sheets.spreadsheets.values.get({
@@ -48,6 +43,10 @@ setInterval(checkAndSendReminders, 5 * 60 * 1000);
 const app = express();
 app.use(express.json());  // встроенный body-parser для JSON
 
+app.get('/api/check-reminders', async (req, res) => {
+  await checkAndSendReminders();
+  res.send('✅ Reminders checked');
+});
 // Конфигурация OpenAI API (ChatGPT)
 const openaiConfig = new Configuration({
   apiKey: process.env.OPENAI_API_KEY  // ключ OpenAI из переменных окружения
