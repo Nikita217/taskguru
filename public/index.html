@@ -239,7 +239,14 @@
         alert('Описание задачи не должно быть пустым.');
         return;
       }
-      const payload = { description: desc, due: due };
+      const time = document.getElementById('taskTime').value;
+      const dueDateTime = due && time ? `${due}T${time}` : due;
+      
+      const payload = {
+        description: desc,
+        due: dueDateTime,
+        userId: tg.initDataUnsafe.user.id
+      };
       console.log("userId:", tg.initDataUnsafe?.user?.id);
       let response;
       if (editingTaskId) {
