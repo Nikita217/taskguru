@@ -123,20 +123,6 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-window.onload = () => {
-  const userId = tg.initDataUnsafe?.user?.id;
-  fetch(`/api/tasks?userId=${userId}`)
-    .then(res => res.json())
-    .then(data => {
-      tasks = data;
-      console.log("Задачи загружены:", tasks);
-      renderTasks();
-    })
-    .catch(err => {
-      console.error("Ошибка загрузки задач:", err);
-      Telegram.WebApp.showAlert("Не удалось загрузить задачи");
-    });
-};
   const tgUser = Telegram.WebApp.initDataUnsafe.user;
   if (tgUser?.photo_url) {
     document.getElementById('user-avatar').src = tgUser.photo_url;
