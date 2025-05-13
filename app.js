@@ -100,11 +100,11 @@ app.post('/api/tasks', async (req, res) => {
     if (!userId || !description) {
       return res.status(400).json({ error: 'userId and description are required' });
     }
-    // Генерируем ID задачи (например, текущее время в мс)
+
     const taskId = Date.now().toString();
     const status = 'Pending';
     const dueDateTime = due || '';
-    
+
     await sheets.spreadsheets.values.append({
       spreadsheetId: GOOGLE_SHEET_ID,
       range: 'Tasks!A2:E',
@@ -114,8 +114,12 @@ app.post('/api/tasks', async (req, res) => {
         values: [[ taskId, userId, description, dueDateTime, status ]]
       }
     });
-    
+
     return res.json({ id: taskId, status: 'ok' });
+
+  } catch (err) {
+    console.error('Ошибка при добавлении задачи:', err);
+    return res.status(500).json({ error: 'Failed to add task' });
   }
 });
 
