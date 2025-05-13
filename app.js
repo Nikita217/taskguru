@@ -21,30 +21,32 @@ async function checkAndSendReminders() {
     for (const row of rows) {
       const [id, userId, description, due, status] = row;
       if (!due || status === 'Done') continue;
-
+    
       const taskTime = new Date(due);
-      console.log(`📅 Проверка задачи "${description}" на ${taskTime.toISOString()}`);
-
+      const now = new Date();
+      const soon = new Date(now.getTime() + 15 * 60 * 1000);
+    
+      console.log(`🧪 now: ${now.toISOString()}, soon: ${soon.toISOString()}, taskTime: ${taskTime.toISOString()}`);
+    
       if (taskTime > now && taskTime <= soon) {
+        console.log(`📡 Отправляю уведомление "${description}" на ${taskTime.toISOString()}`);
+    
         const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
         const body = {
           chat_id: userId,
           text: `🔔 Через 15 минут задача: "${description}"`
         };
-
-        console.log('📡 Пытаюсь отправить в Telegram:', body);
-
-        try {
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
-          const resultText = await response.text();
-          console.log('📬 Ответ Telegram:', resultText);
-        } catch (fetchErr) {
-          console.error('❌ Ошибка при запросе в Telegram API:', fetchErr);
-        }
+    
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+    
+        const result = await response.text();
+        console.log('📬 Ответ Telegram:', result);
+      }
+    }
       }
     }
   } catch (err) {
