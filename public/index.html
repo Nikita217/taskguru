@@ -167,6 +167,14 @@
     // Массив задач в памяти клиента
     let tasks = [];
 
+    function formatDateTime(isoStr) {
+      if (!isoStr) return '';
+      const date = new Date(isoStr);
+      const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+      const datePart = date.toLocaleDateString('ru-RU', options);
+      const timePart = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      return `${datePart} ${timePart}`;
+    }
     // Функция рендеринга списка задач
     function renderTasks() {
       const listEl = document.getElementById('task-list');
@@ -193,7 +201,7 @@
           const dueSpan = document.createElement('span');
           dueSpan.style.fontSize = '0.8em';
           dueSpan.style.marginRight = '8px';
-          dueSpan.textContent = formatDateTime(task.due);;
+          dueSpan.textContent = formatDateTime(task.due);
           item.appendChild(dueSpan);
         }
         listEl.appendChild(item);
