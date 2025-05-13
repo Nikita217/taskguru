@@ -103,13 +103,19 @@ app.post('/api/tasks', async (req, res) => {
     // Генерируем ID задачи (например, текущее время в мс)
     const taskId = Date.now().toString();
     const status = 'Pending';
-    // Добавляем новую строку в таблицу Google Sheets
-    const dueDateTime = due || ''; // уже ISO строка
-    values: [[ taskId, userId, description, dueDateTime, status ]]
+    const dueDateTime = due || '';
+    
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'Tasks!A2:E',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [[ taskId, userId, description, dueDateTime, status ]]
+      }
+    });
+    
     return res.json({ id: taskId, status: 'ok' });
-  } catch (err) {
-    console.error('Ошибка при добавлении задачи:', err);
-    return res.status(500).json({ error: 'Failed to add task' });
   }
 });
 
