@@ -1,5 +1,6 @@
 // app.js – основной сервер приложения
 const express = require('express');
+const cron = require('node-cron');
 const fetch = require('node-fetch');  // для вызова внешних API (если нужен)
 const { Configuration, OpenAIApi } = require('openai');
 // Google Sheets API
@@ -277,6 +278,24 @@ app.get('/api/motivation', async (req, res) => {
 
 // Запуск сервера
 const PORT = process.env.PORT || 3000;
+
+const PORT = process.env.PORT || 10000;
+
+const app = express();
+
+app.get('/', (req, res) => res.send('TaskGuru работает'));
+
+app.get('/api/check-reminders', async (req, res) => {
+  await checkAndSendReminders();
+  res.send('✅ Напоминания проверены');
+});
+
+// ⏱ Автозапуск каждые 5 минут
+cron.schedule('*/5 * * * *', async () => {
+  console.log('⏰ Cron: запуск напоминаний...');
+  await checkAndSendReminders();
+});
+
 app.listen(PORT, () => {
-  console.log(`✅ Server is running on port ${PORT}`);
+  console.log(`✅ Сервер запущен на порту ${PORT}`);
 });
